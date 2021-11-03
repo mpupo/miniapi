@@ -11,11 +11,9 @@ async function connectToDb(){
     await DB_CLIENT.connect();
 }
 async function populateDb(alunosObject) {
-    await DB_CLIENT.db().createCollection('alunos');
+    await DB_CLIENT.db(process.env.MONGO_DATABASE).createCollection('alunos');
 
-    alunosObject.forEach(aluno => async () => {
-        await DB_CLIENT.db().collection('alunos').insertOne(aluno);
-    });
+    await alunosObject.forEach(aluno => DB_CLIENT.db(process.env.MONGO_DATABASE).collection('alunos').insertOne(aluno));
 }
 
 async function main(){
@@ -31,6 +29,7 @@ async function main(){
     try {
         const alunosFile = fs.readFileSync(process.env.DB_INITIAL_DATA, 'utf-8');
         alunos = JSON.parse(alunosFile);
+        console.log(alunos);
     } catch (error) {
         console.log("Falha ao ler o arquivo de dados.");
         throw error;
@@ -39,20 +38,37 @@ async function main(){
     try {
         await populateDb(alunos);
     } catch (error) {
-        console.log("Falha ao popular o banco de dados.");
+        console.log("Falha ao popular o banco de dados.", error);
         throw error;
     }
 
 }
+
+app.get("/insert", async (req, res )=> {
+
+    let alunos = fs.readFileSync(process.env.DB_INITIAL_DATA, 'utf-8');
+    alunos_obj = JSON.parse(alunos);
+    console.log(alunos_obj);
+
+    try {
+        alunos_obj.forEach(aluno =>DB_CLIENT.db(process.env.MONGO_DATABASE).collection('alunos').insertOne(aluno));
+    } catch (error) {
+        res.send('Erro ao inserir dados no banco:'+ error);
+    }
+
+
+    res.send('Enviado!');
+}) ;
+
 
 app.get("/aluno", async (req, res )=> {
 
     let alunos_response;
 
     try {
-        alunos_response = await DB_CLIENT.db().collection('alunos').find({}).toArray();
+        alunos_response = await DB_CLIENT.db(process.env.MONGO_DATABASE).collection('alunos').find({}).toArray();
     } catch (error) {
-        alunos_response = {"Error": "Falha na conexão com o banco de dados."};
+        alunos_response = {"Error": "Falha na conexão com o banco de dados. Erro:" + error};
     }
     res.send(alunos_response);
 }) ;
